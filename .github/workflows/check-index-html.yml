@@ -1,0 +1,42 @@
+name: Check index.html
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check-index:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+
+      - name: Run check_index.sh
+        id: check
+        run: |
+          chmod +x check_index.sh
+          if ./check_index.sh; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update README on main
+        if: steps.check.outputs.exists == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch and switch to main
+          git fetch origin main
+          git checkout main
+
+          # Append result line to README.md
+          echo "- Branch \`${BRANCH}\`: index.html exists ✅" >> README.md
+
+          git add README.md
+          git commit -m "chore: add index.html check result for branch ${BRANCH}"
+          git push origin main
