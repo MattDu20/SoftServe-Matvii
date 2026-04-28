@@ -6,10 +6,15 @@ on:
 jobs:
   check-index:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout current branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run check_index.sh
         id: check
@@ -30,13 +35,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Fetch and switch to main
-          git fetch origin main
+          # Switch to main
           git checkout main
 
-          # Append result line to README.md
-          echo "- Branch \`${BRANCH}\`: index.html exists ✅" >> README.md
-
-          git add README.md
-          git commit -m "chore: add index.html check result for branch ${BRANCH}"
-          git push origin main
+          # Append result line only if it doesn't already exist for this branch
+          ENTRY="- Branch \`${BRANCH}\`: index.html exists ✅"
+          if ! grep -qF "${ENTRY}" README.md; then
+            echo "${ENTRY}" >> README.md
+            git add README.md
+            git commit -m "chore: add index.html check result for branch ${BRANCH}"
+            git push origin main
+          else
+            echo "Entry for branch ${BRANCH} already exists in README.md, skipping."
+          fi
